@@ -1,0 +1,13 @@
+# This .gitignore ensures only code, notebooks, and documentation are tracked for academic sharing
+
+# Ignore everything
+*
+
+# Allow folders
+!*/
+
+# Allow code, notebooks, documentation, and ignore rules
+!*.ipynb
+!*.py
+!README.md
+!.gitignore
