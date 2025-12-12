@@ -1,5 +1,10 @@
 # Crayfish Sex Classification
 
+![Python](https://img.shields.io/badge/Python-3.9+-blue.svg)
+![PyTorch](https://img.shields.io/badge/PyTorch-2.0+-red.svg)
+![License](https://img.shields.io/badge/License-MIT-green.svg)
+![Paper](https://img.shields.io/badge/Paper-Published-orange.svg)
+
 ## Enhancing Crayfish Sex Identification with Kolmogorov-Arnold Networks and Stacked Autoencoders
 
 This repository contains the source code and experimental results for the research paper:
@@ -250,6 +255,64 @@ KAN is based on the Kolmogorov-Arnold representation theorem, decomposing comple
 - Maximum Epochs: 50
 - Loss Function: BCEWithLogitsLoss
 
+### KAN Implementation Details
+
+The KAN implementation uses efficient B-spline transformations for learnable activation functions. Key implementation features:
+
+```python
+# KAN Model Initialization (Optimal hyperparameters from grid search - See Appendix B)
+model = KAN(
+    layers_hidden=[11, 128, 64, 32, 1],  # Input(11) → Hidden layers → Output(1)
+    grid_size=7,                          # B-spline grid points
+    spline_order=5,                       # Spline polynomial degree (k)
+    scale_base=1.0,                       # Base function scaling
+    scale_spline=1.0                      # Spline function scaling
+)
+
+# Training configuration
+optimizer = torch.optim.Adam(model.parameters(), lr=0.0005)
+criterion = torch.nn.BCEWithLogitsLoss()  # Binary classification loss
+```
+
+**Core Components:**
+
+| Component | Description |
+|-----------|-------------|
+| `EarlyStopping` | Monitors validation loss with configurable patience and delta threshold |
+| `DataManager` | Handles data loading, preprocessing, and train/test splitting |
+| `KANTrainer` | Manages grid search, cross-validation, and model training |
+| `ResultsManager` | Generates comprehensive reports, visualizations, and exports |
+
+**Training Pipeline:**
+```mermaid
+flowchart TD
+    A[Data Loading] --> B[Preprocessing]
+    B --> C[Grid Search]
+    C --> D[10-Fold Cross-Validation]
+    D --> E{Best Configuration}
+    E --> F[Final Model Training]
+    F --> G[Evaluation]
+    G --> H[Export Results]
+
+    subgraph Hyperparameter Optimization
+        C
+        D
+        E
+    end
+```
+
+**Data Preprocessing Strategy:**
+
+| Dataset | Normalization | Rationale |
+|---------|---------------|-----------|
+| Tabular (Standardization) | `StandardScaler` per fold | Prevents data leakage in CV |
+| Tabular (Min-Max) | Pre-normalized | Data already in [0,1] range |
+| Image Features (AE) | `StandardScaler` on train set | Applied to extracted features |
+
+**Grid Search Statistics:**
+- Tabular data: 2,160 configurations × 10-fold CV = 21,600 training runs
+- Image features (AE/Stacked AE): 8,640 configurations with 70/30 train-test split
+
 ### Validation Strategy
 
 | Dataset Type | Validation Method |
@@ -436,6 +499,21 @@ Crayfish-Sex-Identification-/
 3. **SVM performs best on autoencoder features** (84% accuracy)
 4. **KAN improves 3.5% with stacked autoencoders**, achieving best performance
 5. **Statistical tests confirm** significant differences between KAN, SVM, MLP, and NB
+
+### KAN Model-Specific Observations
+
+| Aspect | Tabular Data (11 features) | AE Features (12,800) | Stacked AE (18,432) |
+|--------|---------------------------|---------------------|---------------------|
+| Accuracy | 95-100% | 78% | 81.9% |
+| Architecture | [11,128,64,32,1] | [12800,128,64,32,1] | [18432,128,64,32,1] |
+| Grid Search Configs | 2,160 | 8,640 | 8,640 |
+| Validation Strategy | 10-fold CV | 70/30 Train-Test Split | 70/30 Train-Test Split |
+
+**Performance Characteristics:**
+- **Dimensionality Sensitivity**: KAN excels on low-dimensional tabular data (11 morphometric features) but shows reduced accuracy on high-dimensional autoencoder features due to the gradual neuron reduction in hidden layers (`12800 → 128 → 64 → 32 → 1`)
+- **Stacked AE Improvement**: The 3.5% accuracy gain with stacked autoencoders suggests KAN benefits from hierarchically extracted features that capture more discriminative patterns
+- **Computational Overhead**: B-spline transformations with `grid_size=7` and `spline_order=5` increase parameter count compared to standard MLPs, requiring careful hyperparameter tuning via exhaustive grid search
+- **Early Stopping Dependency**: With `patience=10` epochs, KAN models typically converge within 20-35 epochs, preventing overfitting on small datasets (112 tabular samples, 1,277 images)
 
 ---
 
