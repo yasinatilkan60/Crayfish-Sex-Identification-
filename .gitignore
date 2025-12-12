@@ -11,3 +11,5 @@
 !*.py
 !README.md
 !.gitignore
+.idea/
+.vscode/
